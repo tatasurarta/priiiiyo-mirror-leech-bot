@@ -25,12 +25,12 @@ BRANCH_ = UPSTREAM_BRANCH
 
 @app.on_message(filters.command([BotCommands.UpdateCommand, f'{BotCommands.UpdateCommand}@{bot.username}']) & filters.user(OWNER_ID))
 async def update_it(client, message):
-    msg_ = await message.reply_text("`Updating Please Wait!`")
+    msg_ = await message.reply_text("`Mengupdate Sabar YAA!`")
     try:
         repo = Repo()
     except GitCommandError:
         return await msg_.edit(
-            "**Invalid Git Command. Please Report This Bug To [Support Group](https://t.me/SlamMirrorSupport)**"
+            "**Perintah Git Tidak Valid. Harap Melaporkan Bug Ini Ke [Owner](https://t.me/tatasurarta)**"
         )
     except InvalidGitRepositoryError:
         repo = Repo.init()
@@ -57,7 +57,7 @@ async def update_it(client, message):
             ups_rem.pull(UPSTREAM_BRANCH)
         except GitCommandError:
             repo.git.reset("--hard", "FETCH_HEAD")
-        subprocess.run(["pip3",  "install", "--no-cache-dir", "-r",  "requirements.txt"])
+        await runcmd("pip3 install --no-cache-dir -r requirements.txt")
         await msg_.edit("`Updated Sucessfully! Give Me Some Time To Restart!`")
         with open("./aria.sh", 'rb') as file:
             script = file.read()
@@ -80,4 +80,4 @@ async def update_it(client, message):
         except BaseException as error:
             await msg_.edit(f"**Updater Error** \nTraceBack : `{error}`")
             return repo.__del__()
-        await msg_.edit(f"`Updated Sucessfully! \n\nCheck your config with` `/{BotCommands.ConfigMenuCommand}`")
+        await msg_.edit(f"`Sukses Mengupdate! \n\nCheck your config with` `/{BotCommands.ConfigMenuCommand}`")
