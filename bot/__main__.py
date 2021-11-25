@@ -3,9 +3,14 @@ import signal
 import os
 import asyncio
 
+from pyrogram import idle, filters, types, emoji
 from pyrogram import idle
 from sys import executable
 from quoters import Quote
+from datetime import datetime
+from pytz import timezone
+from sys import executable
+import threading
 
 from telegram import ParseMode, InlineKeyboardButton
 from telegram.ext import Filters, InlineQueryHandler, MessageHandler, CommandHandler, CallbackQueryHandler, CallbackContext
@@ -20,11 +25,19 @@ from .helper.ext_utils.bot_utils import get_readable_file_size, get_readable_tim
 from .helper.telegram_helper.filters import CustomFilters
 from bot.helper.telegram_helper import button_build
 from .modules.rssfeeds import rss_init
-from .modules import authorize, list, cancel_mirror, mirror_status, mirror, clone, watch, shell, eval, torrent_search, delete, speedtest, count, rssfeeds, leech_settings, search
+from .modules import authorize, list, cancel_mirror, mirror_status, mirror, clone, watch, shell, eval, torrent_search, delete, speedtest, count, rssfeeds, leech_settings, search, usage, mediainfo, telegraph, updates
 
+format = "%A, %d %B %Y %H:%M:%S"
+
+# Current time in UTC
+now_utc = datetime.now(timezone('UTC'))
+print(now_utc.strftime(format))
+
+# Convert to Asia/Jakarta time zone
+now_asia = now_utc.astimezone(timezone('Asia/Jakarta'))
+print(now_asia.strftime(format))
 
 def stats(update, context):
-    global main
     currentTime = get_readable_time(time.time() - botStartTime)
     total, used, free = shutil.disk_usage('.')
     total = get_readable_file_size(total)
@@ -35,26 +48,25 @@ def stats(update, context):
     cpuUsage = psutil.cpu_percent(interval=0.5)
     memory = psutil.virtual_memory().percent
     disk = psutil.disk_usage('/').percent
-    stats = f'▶ Rᴜɴɴɪɴɢ Sɪɴᴄᴇ ▶ : {currentTime}\n' \
-            f'<b>DISK INFO</b>\n' \
-            f'<b><i>Total</i></b>: {total}\n' \
-            f'<b><i>Used</i></b>: {used} ~ ' \
-            f'<b><i>Free</i></b>: {free}\n\n' \
-            f'<b>DATA USAGE</b>\n' \
-            f'<b><i>UL</i></b>: {sent} ~ ' \
-            f'<b><i>DL</i></b>: {recv}\n\n' \
-            f'<b>SERVER STATS</b>\n' \
-            f'<b><i>CPU</i></b>: {cpuUsage}%\n' \
-            f'<b><i>RAM</i></b>: {memory}%\n' \
-            f'<b><i>DISK</i></b>: {disk}%\n'
-    keyboard = [[InlineKeyboardButton("CLOSE", callback_data="stats_close")]]
-    main = sendMarkup(stats, context.bot, update, reply_markup=InlineKeyboardMarkup(keyboard))
+    stats = f'▶ 👴🏻 𝐖𝐚𝐤𝐭𝐮 𝐀𝐤𝐭𝐢𝐟 𝐁𝐨𝐭 ⌚️ ▶ : {currentTime}\n' \
+            f'<b>🧀 𝐈𝐍𝐅𝐎 𝐃𝐈𝐒𝐊 🧀</b>\n' \
+            f'<b><i>🏹 𝐉𝐮𝐦𝐥𝐚𝐡 🏹</i></b>: {total}\n' \
+            f'<b><i>⌛️ 𝐓𝐞𝐫𝐩𝐚𝐤𝐚𝐢 ⌛️</i></b>: {used} ~ ' \
+            f'<b><i>🔋 𝐊𝐨𝐬𝐨𝐧𝐠 🔋</i></b>: {free}\n\n' \
+            f'<b>🏋️‍♀️ 𝐏𝐄𝐍𝐆𝐆𝐔𝐍𝐀𝐀𝐍 𝐃𝐀𝐓𝐀 🏋️‍♀️</b>\n' \
+            f'<b><i>🔺 𝐔𝐧𝐠𝐠𝐚𝐡𝐚𝐧</i></b>: {sent} ~ ' \
+            f'<b><i>🔻 𝐔𝐧𝐝𝐮𝐡𝐚𝐧</i></b>: {recv}\n\n' \
+            f'<b>📟 𝐒𝐄𝐑𝐕𝐄𝐑 𝐒𝐓𝐀𝐓𝐔𝐒 📟</b>\n' \
+            f'<b><i>🖥️ 𝐂𝐏𝐔</i></b>: {cpuUsage}%\n' \
+            f'<b><i>🧭 𝐑𝐀𝐌</i></b>: {memory}%\n' \
+            f'<b><i>🖫 𝐃𝐈𝐒𝐊</i></b>: {disk}%\n'
+    sendMessage(stats, context.bot, update)
 
 
 def start(update, context):
     buttons = button_build.ButtonMaker()
-    buttons.buildbutton("Repo", "https://github.com/PriiiiyoDevs/priiiiyo-mirror-leech-bot")
-    buttons.buildbutton("Channel", "https://t.me/PriiiiyoMirrorUpdates")
+    buttons.buildbutton("👨🏼‍✈️ 𝐏𝐞𝐦𝐢𝐥𝐢𝐤 🙈", "https://www.instagram.com/mimi.peri")
+    buttons.buildbutton("🐊 𝐂𝐫𝐮𝐬𝐡 👩🏻", "https://www.instagram.com/zar4leola")
     reply_markup = InlineKeyboardMarkup(buttons.build_menu(2))
     if CustomFilters.authorized_user(update) or CustomFilters.authorized_chat(update):
         start_string = f'''
@@ -64,7 +76,7 @@ Type /{BotCommands.HelpCommand} to get a list of available commands
         sendMarkup(start_string, context.bot, update, reply_markup)
     else:
         sendMarkup(
-            'Oops! not a Authorized user.\nPlease deploy your own <b>priiiiyo-mirror-leech-bot</b>.',
+            '𝐔𝐩𝐬! 𝐓𝐢𝐝𝐚𝐤 𝐌𝐞𝐦𝐢𝐥𝐢𝐤𝐢 𝐎𝐭𝐨𝐫𝐢𝐬𝐚𝐬𝐢 𝐑𝐞𝐬𝐦𝐢.\n𝐘𝐚𝐧𝐠 𝐒𝐀𝐁𝐀𝐑 𝐲𝐚 𝐁𝐨𝐬𝐪𝐮. \n<b>𝐇𝐚𝐫𝐢 𝐘𝐚𝐧𝐠 𝐁𝐞𝐫𝐚𝐭, 𝐔𝐧𝐭𝐮𝐤 𝐎𝐫𝐚𝐧𝐠 𝐘𝐚𝐧𝐠 𝐇𝐞𝐛𝐚𝐭.</b>.',
             context.bot,
             update,
             reply_markup,
@@ -72,7 +84,7 @@ Type /{BotCommands.HelpCommand} to get a list of available commands
 
 
 def restart(update, context):
-    restart_message = sendMessage("Restarting...", context.bot, update)
+    restart_message = sendMessage("𝐦𝐞𝐦𝐮𝐥𝐚𝐢 𝐮𝐥𝐚𝐧𝐠...", context.bot, update)
     # Save restart message object in order to reply to it after restarting
     with open(".restartmsg", "w") as f:
         f.truncate(0)
@@ -156,9 +168,9 @@ help_string_telegraph = f'''<br>
 <b>/{BotCommands.StatsCommand}</b>: Show Stats of the machine the bot is hosted on
 '''
 help = Telegraph(access_token=telegraph_token).create_page(
-        title='Priiiiyo Mirror Leech Help',
-        author_name='Priiiiyo Mirror Leech',
-        author_url='https://github.com/PriiiiyoDevs/priiiiyo-mirror-leech-bot',
+        title='Perintah Rumah Awan',
+        author_name='Rumah Awanh',
+        author_url='https://t.me/awanmirror2bot',
         html_content=help_string_telegraph,
     )["path"]
 
@@ -183,6 +195,8 @@ help_string = f'''
 
 /{BotCommands.ShellCommand}: Run commands in Shell (Only Owner)
 
+/{BotCommands.MediaInfoCommand}: Dapatkan info terperinci tentang Media Jawab (hanya untuk file telegram)
+
 /{BotCommands.ExecHelpCommand}: Get help for Executor module (Only Owner)
 
 /{BotCommands.RssHelpCommand}:  Get help for RSS feeds module
@@ -192,7 +206,7 @@ help_string = f'''
 
 def bot_help(update, context):
     button = button_build.ButtonMaker()
-    button.buildbutton("Other Commands", f"https://telegra.ph/{help}")
+    button.buildbutton("Perintah lainnya", f"https://telegra.ph/{help}")
     reply_markup = InlineKeyboardMarkup(button.build_menu(1))
     sendMarkup(help_string, context.bot, update, reply_markup)
 
@@ -217,6 +231,7 @@ botcmds = [
         (f'{BotCommands.StatsCommand}','Bot Usage Stats'),
         (f'{BotCommands.PingCommand}','Ping the Bot'),
         (f'{BotCommands.RestartCommand}','Restart the bot [owner/sudo only]'),
+        (f'{BotCommands.MediaInfoCommand}','Dapatkan info detail tentang media yang dibalas'),
         (f'{BotCommands.LogCommand}','Get the Bot Log [owner/sudo only]'),
         (f'{BotCommands.RssHelpCommand}','Get help for RSS feeds module'),
         (f'{BotCommands.TsHelpCommand}','Get help for Torrent search module')
@@ -224,6 +239,7 @@ botcmds = [
 '''
 
 def main():
+    current = now_asia.strftime(format)
     fs_utils.start_cleanup()
     if IS_VPS:
         asyncio.get_event_loop().run_until_complete(start_server_async(PORT))
@@ -231,11 +247,14 @@ def main():
     if os.path.isfile(".restartmsg"):
         with open(".restartmsg") as f:
             chat_id, msg_id = map(int, f)
-        bot.edit_message_text("Restarted successfully!", chat_id, msg_id)
+        bot.edit_message_text(
+            f'🟢 𝐁𝐞𝐫𝐡𝐚𝐬𝐢𝐥 𝐦𝐞𝐦𝐮𝐥𝐚𝐢 𝐮𝐥𝐚𝐧𝐠, 𝐒𝐞𝐦𝐮𝐚 𝐓𝐮𝐠𝐚𝐬 𝐃𝐢𝐛𝐚𝐭𝐚𝐥𝐤𝐚𝐧!\n'
+            f'⏰ {current}', chat_id, msg_id
+        )
         os.remove(".restartmsg")
     elif OWNER_ID:
         try:
-            text = "<b>Bot Restarted!</b>"
+            text = f'🟢 Bot Sudah Hidup Kembali!\n⏰ {current}'
             bot.sendMessage(chat_id=OWNER_ID, text=text, parse_mode=ParseMode.HTML)
             if AUTHORIZED_CHATS:
                 for i in AUTHORIZED_CHATS:
