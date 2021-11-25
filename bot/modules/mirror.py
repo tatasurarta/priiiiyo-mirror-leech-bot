@@ -71,10 +71,10 @@ class MirrorListener(listeners.MirrorListeners):
         with download_dict_lock:
             LOGGER.info(f"Download completed: {download_dict[self.uid].name()}")
             download = download_dict[self.uid]
-            name = str(download.name()).replace('/', '')
+            name = f"{download.name()}".replace('/', '')
             gid = download.gid()
             size = download.size_raw()
-            if name == "None" or self.isQbit:
+            if name == "None" or self.isQbit: # when pyrogram's media.file_name is of NoneType
                 name = os.listdir(f'{DOWNLOAD_DIR}{self.uid}')[0]
             m_path = f'{DOWNLOAD_DIR}{self.uid}/{name}'
         if self.isZip:
@@ -211,18 +211,18 @@ class MirrorListener(listeners.MirrorListeners):
                 uname = f'<a href="tg://user?id={self.message.from_user.id}">{self.message.from_user.first_name}</a>'
             count = len(files)
             if self.message.chat.type == 'private':
-                msg = f'<code>{link}</code>\n'
-                msg += f'<b>Total Files: </b>{count}'
+                msg = f'<b>Nama File:</b> <code>{link}</code>\n'
+                msg += f'<b>Jumlah File: </b>{count}'
                 if typ != 0:
-                    msg += f'\n<b>Corrupted Files: </b>{typ}'
+                    msg += f'\n<b>File Rusak: </b>{typ}'
                 sendMessage(msg, self.bot, self.update)
             else:
                 chat_id = str(self.message.chat.id)[4:]
-                msg = f"<a href='https://t.me/c/{chat_id}/{self.uid}'>{link}</a>\n"
-                msg += f'<b>Total Files: </b>{count}\n'
+                msg = f"<b>Nama File:</b> <a href='https://t.me/c/{chat_id}/{self.uid}'>{link}</a>\n"
+                msg += f'<b>Jumlah File: </b>{count}\n'
                 if typ != 0:
-                    msg += f'<b>Corrupted Files: </b>{typ}\n'
-                msg += f'<b>cc: </b>{uname}\n\n'
+                    msg += f'<b>File Rusak: </b>{typ}\n'
+                msg += f'<b>Uploader: </b>{uname}\n\n'
                 fmsg = ''
                 for index, item in enumerate(list(files), start=1):
                     msg_id = files[item]
@@ -248,13 +248,13 @@ class MirrorListener(listeners.MirrorListeners):
                 update_all_messages()
             return
         with download_dict_lock:
-            msg = f'<b>🗂️ Filename: </b><code>{download_dict[self.uid].name()}</code>\n<b>📦 Size: </b><code>{size}</code>'
+            msg = f'<b>🗂️ 𝐍𝐚𝐦𝐚 𝐅𝐢𝐥𝐞: </b><code>{download_dict[self.uid].name()}</code>\n<b>📦 Ukuran: </b><code>{size}</code>'
             if os.path.isdir(f'{DOWNLOAD_DIR}/{self.uid}/{download_dict[self.uid].name()}'):
-                msg += '\n<b>⚙️ Type: </b><code>Folder</code>'
-                msg += f'\n<b>📚 SubFolders: </b><code>{folders}</code>'
-                msg += f'\n<b>📁 Files: </b><code>{files}</code>'
+                msg += '\n<b>⚙️ 𝐉𝐞𝐧𝐢𝐬: </b><code>Folder</code>'
+                msg += f'\n<b>📚 𝐒𝐮𝐛 𝐅𝐨𝐥𝐝𝐞𝐫: </b><code>{folders}</code>'
+                msg += f'\n<b>📁 𝐅𝐢𝐥𝐞: </b><code>{files}</code>'
             else:
-                msg += f'\n<b>⚙️ Type: </b><code>{typ}</code>'
+                msg += f'\n<b>⚙️ 𝐉𝐞𝐧𝐢𝐬: </b><code>{typ}</code>'
             buttons = button_build.ButtonMaker()
             if SHORTENER is not None and SHORTENER_API is not None:
                 surl = short_url(link)
@@ -295,7 +295,7 @@ class MirrorListener(listeners.MirrorListeners):
             else:
                 uname = f'<a href="tg://user?id={self.message.from_user.id}">{self.message.from_user.first_name}</a>'
             if uname is not None:
-                msg += f'\n\nRequested By: {uname}'
+                msg += f'\n\nRequest Dari: {uname}'
             try:
                 fs_utils.clean_download(download_dict[self.uid].path())
             except FileNotFoundError:
