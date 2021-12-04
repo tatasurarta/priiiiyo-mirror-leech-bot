@@ -55,16 +55,48 @@ if CONFIG_FILE_URL is not None:
     else:
         logging.error(res.status_code)
 
-load_dotenv('config.env')
+load_dotenv('config.env', override=True)
 
-SERVER_PORT = os.environ.get('SERVER_PORT', None)
+
+def getConfig(name: str):
+    return os.environ[name]
+
+try:
+    NETRC_URL = getConfig('NETRC_URL')
+    if len(NETRC_URL) == 0:
+        raise KeyError
+    try:
+        res = requests.get(NETRC_URL)
+        if res.status_code == 200:
+            with open('.netrc', 'wb+') as f:
+                f.write(res.content)
+                f.close()
+        else:
+            logging.error(f"Failed to download .netrc {res.status_code}")
+    except Exception as e:
+        logging.error(str(e))
+except KeyError:
+    pass
+try:
+    SERVER_PORT = getConfig('SERVER_PORT')
+    if len(SERVER_PORT) == 0:
+        raise KeyError
+except KeyError:
+    SERVER_PORT = 80
+    
 PORT = os.environ.get('PORT', SERVER_PORT)
 web = subprocess.Popen([f"gunicorn wserver:start_server --bind 0.0.0.0:{PORT} --worker-class aiohttp.GunicornWebWorker"], shell=True)
 alive = subprocess.Popen(["python3", "alive.py"])
+nox = subprocess.Popen(["qbittorrent-nox", "--profile=."])
+if not os.path.exists('.netrc'):
+    subprocess.run(["touch", ".netrc"])
 subprocess.run(["mkdir", "-p", "qBittorrent/config"])
 subprocess.run(["cp", "qBittorrent.conf", "qBittorrent/config/qBittorrent.conf"])
-nox = subprocess.Popen(["qbittorrent-nox", "--profile=."])
-time.sleep(1)
+subprocess.run(["chmod", "600", ".netrc"])
+subprocess.run(["chmod", "+x", "aria.sh"])
+subprocess.run(["./aria.sh"], shell=True)
+time.sleep(0.5)
+
 Interval = []
 DRIVES_NAMES = []
 DRIVES_IDS = []
@@ -103,6 +135,16 @@ aria2 = aria2p.API(
 
 def get_client() -> qba.TorrentsAPIMixIn:
     qb_client = qba.Client(host="localhost", port=8090, username="admin", password="adminadmin")
+   
+
+"""
+trackers = subprocess.check_output(["curl -Ns https://raw.githubusercontent.com/XIU2/TrackersListCollection/master/all.txt https://ngosang.github.io/trackerslist/trackers_all_http.txt https://newtrackon.com/api/all | awk '$0'"], shell=True).decode('utf-8')
+
+trackerslist = set(trackers.split("\n"))
+trackerslist.remove("")
+trackerslist = "\n\n".join(trackerslist)
+get_client().application.set_preferences({"add_trackers":f"{trackerslist}"})
+"""
     try:
         qb_client.auth_log_in()
         #qb_client.application.set_preferences({"disk_cache":64, "incomplete_files_ext":True, "max_connec":3000, "max_connec_per_torrent":300, "async_io_threads":8, "preallocate_all":True, "upnp":True, "dl_limit":-1, "up_limit":-1, "dht":True, "pex":True, "lsd":True, "encryption":0, "queueing_enabled":True, "max_active_downloads":15, "max_active_torrents":50, "dont_count_slow_torrents":True, "bittorrent_protocol":0, "recheck_completed_torrents":True, "enable_multi_connections_from_same_ip":True, "slow_torrent_dl_rate_threshold":100,"slow_torrent_inactive_timer":600})
@@ -352,6 +394,11 @@ try:
 except KeyError:
     BLOCK_MEGA_LINKS = False
 try:
+    WEB_PINCODE = getConfig('WEB_PINCODE')
+    WEB_PINCODE = WEB_PINCODE.lower() == 'true'
+except KeyError:
+    WEB_PINCODE = False
+try:
     SHORTENER = getConfig('SHORTENER')
     SHORTENER_API = getConfig('SHORTENER_API')
     if len(SHORTENER) == 0 or len(SHORTENER_API) == 0:
@@ -399,6 +446,14 @@ try:
         raise KeyError
 except KeyError:
     CUSTOM_FILENAME = None
+try:
+    PHPSESSID = getConfig('PHPSESSID')
+    CRYPT = getConfig('CRYPT')
+    if len(PHPSESSID) == 0 or len(CRYPT) == 0:
+        raise KeyError
+except KeyError:
+    PHPSESSID = None
+    CRYPT = None
 try:
     RECURSIVE_SEARCH = getConfig('RECURSIVE_SEARCH')
     RECURSIVE_SEARCH = RECURSIVE_SEARCH.lower() == 'true'
@@ -449,6 +504,22 @@ try:
         else:
             logging.error(res.status_code)
             raise KeyError
+except KeyError:
+    pass
+try:
+    YT_COOKIES_URL = getConfig('YT_COOKIES_URL')
+    if len(YT_COOKIES_URL) == 0:
+        raise KeyError
+    try:
+        res = requests.get(YT_COOKIES_URL)
+        if res.status_code == 200:
+            with open('cookies.txt', 'wb+') as f:
+                f.write(res.content)
+                f.close()
+        else:
+            logging.error(f"Failed to download cookies.txt, link got HTTP response: {res.status_code}")
+    except Exception as e:
+        logging.error(str(e))
 except KeyError:
     pass
 
