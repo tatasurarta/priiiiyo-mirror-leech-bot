@@ -2,6 +2,7 @@ import shutil, psutil
 import signal
 import os
 import asyncio
+import subprocess
 
 from pyrogram import idle, filters, types, emoji
 from pyrogram import idle
@@ -46,20 +47,32 @@ def stats(update, context):
     sent = get_readable_file_size(psutil.net_io_counters().bytes_sent)
     recv = get_readable_file_size(psutil.net_io_counters().bytes_recv)
     cpuUsage = psutil.cpu_percent(interval=0.5)
-    memory = psutil.virtual_memory().percent
     disk = psutil.disk_usage('/').percent
-    stats = f'▶ 👴🏻 𝐖𝐚𝐤𝐭𝐮 𝐀𝐤𝐭𝐢𝐟 𝐁𝐨𝐭 ⌚️ ▶ : {currentTime}\n' \
-            f'<b>🧀 𝐈𝐍𝐅𝐎 𝐃𝐈𝐒𝐊 🧀</b>\n' \
-            f'<b><i>🏹 𝐉𝐮𝐦𝐥𝐚𝐡 🏹</i></b>: {total}\n' \
-            f'<b><i>⌛️ 𝐓𝐞𝐫𝐩𝐚𝐤𝐚𝐢 ⌛️</i></b>: {used} ~ ' \
-            f'<b><i>🔋 𝐊𝐨𝐬𝐨𝐧𝐠 🔋</i></b>: {free}\n\n' \
-            f'<b>🏋️‍♀️ 𝐏𝐄𝐍𝐆𝐆𝐔𝐍𝐀𝐀𝐍 𝐃𝐀𝐓𝐀 🏋️‍♀️</b>\n' \
-            f'<b><i>🔺 𝐔𝐧𝐠𝐠𝐚𝐡𝐚𝐧</i></b>: {sent} ~ ' \
-            f'<b><i>🔻 𝐔𝐧𝐝𝐮𝐡𝐚𝐧</i></b>: {recv}\n\n' \
-            f'<b>📟 𝐒𝐄𝐑𝐕𝐄𝐑 𝐒𝐓𝐀𝐓𝐔𝐒 📟</b>\n' \
-            f'<b><i>🖥️ 𝐂𝐏𝐔</i></b>: {cpuUsage}%\n' \
-            f'<b><i>🧭 𝐑𝐀𝐌</i></b>: {memory}%\n' \
-            f'<b><i>🖫 𝐃𝐈𝐒𝐊</i></b>: {disk}%\n'
+    p_core = psutil.cpu_count(logical=False)
+    t_core = psutil.cpu_count(logical=True)
+    swap = psutil.swap_memory()
+    swap_p = swap.percent
+    swap_t = get_readable_file_size(swap.total)
+    swap_u = get_readable_file_size(swap.used)
+    memory = psutil.virtual_memory()
+    mem_p = memory.percent
+    mem_t = get_readable_file_size(memory.total)
+    mem_a = get_readable_file_size(memory.available)
+    mem_u = get_readable_file_size(memory.used)
+    stats = f'<b>👴🏻 𝐖𝐚𝐤𝐭𝐮 𝐀𝐤𝐭𝐢𝐟 𝐁𝐨𝐭 ⌚️</b> {currentTime}\n\n'\
+            f'<b>🏹 𝐉𝐮𝐦𝐥𝐚𝐡 🏹:</b> {total}\n'\
+            f'<b>⌛️ 𝐓𝐞𝐫𝐩𝐚𝐤𝐚𝐢 ⌛️:</b> {used} | <b>Free:</b> {free}\n\n'\
+            f'<b>🔺 𝐔𝐧𝐠𝐠𝐚𝐡𝐚𝐧:</b> {sent}\n'\
+            f'<b>🔻 𝐔𝐧𝐝𝐮𝐡𝐚𝐧:</b> {recv}\n\n'\
+            f'<b>🖥️ 𝐂𝐏𝐔:</b> {cpuUsage}%\n'\
+            f'<b>🧭 𝐑𝐀𝐌:</b> {mem_p}%\n'\
+            f'<b>🖫 𝐃𝐈𝐒𝐊:</b> {disk}%\n\n'\
+            f'<b>Physical Cores:</b> {p_core}\n'\
+            f'<b>Total Cores:</b> {t_core}\n\n'\
+            f'<b>SWAP:</b> {swap_t} | <b>Used:</b> {swap_p}%\n'\
+            f'<b>Memory Total:</b> {mem_t}\n'\
+            f'<b>Memory Free:</b> {mem_a}\n'\
+            f'<b>Memory Used:</b> {mem_u}\n'
     sendMessage(stats, context.bot, update)
 
 
@@ -96,6 +109,11 @@ def restart(update, context):
         proc.kill()
     process.kill()
     nox.kill()
+    subprocess.run(["python3", "update.py"])
+    # Save restart message object in order to reply to it after restarting
+    with open(".restartmsg", "w") as f:
+        f.truncate(0)
+        f.write(f"{restart_message.chat.id}\n{restart_message.message_id}\n")
     os.execl(executable, executable, "-m", "bot")
 
 
