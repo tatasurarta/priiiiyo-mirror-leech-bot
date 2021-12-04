@@ -1,12 +1,9 @@
-# Implement By - @anasty17 (https://github.com/SlamDevs/slam-mirrorbot/commit/d888a1e7237f4633c066f7c2bbfba030b83ad616)
-# (c) https://github.com/SlamDevs/slam-mirrorbot
-# All rights reserved
-
 import os
 import logging
 import time
+import threading
 
-from pyrogram.errors import FloodWait
+from pyrogram.errors import FloodWait, RPCError
 
 from bot import app, DOWNLOAD_DIR, AS_DOCUMENT, AS_DOC_USERS, AS_MEDIA_USERS, CUSTOM_FILENAME
 from bot.helper.ext_utils.fs_utils import take_ss, get_media_info
@@ -14,9 +11,9 @@ from bot.helper.ext_utils.fs_utils import take_ss, get_media_info
 LOGGER = logging.getLogger(__name__)
 logging.getLogger("pyrogram").setLevel(logging.ERROR)
 
-VIDEO_SUFFIXES = ("MKV", "MP4", "MOV", "WMV", "3GP", "MPG", "WEBM", "AVI", "FLV", "M4V")
+VIDEO_SUFFIXES = ("MKV", "MP4", "MOV", "WMV", "3GP", "MPG", "WEBM", "AVI", "FLV", "M4V", "GIF")
 AUDIO_SUFFIXES = ("MP3", "M4A", "M4B", "FLAC", "WAV", "AIF", "OGG", "AAC", "DTS", "MID", "AMR", "MKA")
-IMAGE_SUFFIXES = ("JPG", "JPX", "PNG", "GIF", "WEBP", "CR2", "TIF", "BMP", "JXR", "PSD", "ICO", "HEIC", "JPEG")
+IMAGE_SUFFIXES = ("JPG", "JPX", "PNG", "WEBP", "CR2", "TIF", "BMP", "JXR", "PSD", "ICO", "HEIC", "JPEG")
 
 
 class TgUploader:
@@ -29,6 +26,7 @@ class TgUploader:
         self.uploaded_bytes = 0
         self.last_uploaded = 0
         self.start_time = time.time()
+        self.__resource_lock = threading.RLock()
         self.is_cancelled = False
         self.chat_id = listener.message.chat.id
         self.message_id = listener.uid
@@ -36,31 +34,32 @@ class TgUploader:
         self.as_doc = AS_DOCUMENT
         self.thumb = f"Thumbnails/{self.user_id}.jpg"
         self.sent_msg = self.__app.get_messages(self.chat_id, self.message_id)
+        self.msgs_dict = {}
+        self.corrupted = 0
+        self.user_settings()
 
     def upload(self):
-        msgs_dict = {}
-        corrupted = 0
         path = f"{DOWNLOAD_DIR}{self.message_id}"
-        self.user_settings()
         for dirpath, subdir, files in sorted(os.walk(path)):
             for filee in sorted(files):
                 if self.is_cancelled:
                     return
-                if filee.endswith('.torrent'):
+                if filee.endswith(".torrent"):
                     continue
                 up_path = os.path.join(dirpath, filee)
                 fsize = os.path.getsize(up_path)
                 if fsize == 0:
-                    corrupted += 1
+                    LOGGER.error(f"{up_path} size is zero, telegram don't upload this file")
+                    self.corrupted += 1
                     continue
                 self.upload_file(up_path, filee, dirpath)
                 if self.is_cancelled:
                     return
-                msgs_dict[filee] = self.sent_msg.message_id
+                self.msgs_dict[filee] = self.sent_msg.message_id
                 self.last_uploaded = 0
                 time.sleep(1.5)
         LOGGER.info(f"Leech Done: {self.name}")
-        self.__listener.onUploadComplete(self.name, None, msgs_dict, None, corrupted)
+        self.__listener.onUploadComplete(self.name, None, self.msgs_dict, None, self.corrupted)
 
     def upload_file(self, up_path, filee, dirpath):
         if CUSTOM_FILENAME is not None:
@@ -81,10 +80,11 @@ class TgUploader:
                     if thumb is None:
                         thumb = take_ss(up_path)
                         if self.is_cancelled:
-                            os.remove(thumb)
+                            if self.thumb is None and thumb is not None and os.path.lexists(thumb):
+                                os.remove(thumb)
                             return
                     if not filee.upper().endswith(("MKV", "MP4")):
-                        filee = os.path.splitext(filee)[0] + '.mp4'
+                        filee = os.path.splitext(filee)[0] + ".mp4"
                         new_path = os.path.join(dirpath, filee)
                         os.rename(up_path, new_path)
                         up_path = new_path
@@ -124,7 +124,8 @@ class TgUploader:
                 if filee.upper().endswith(VIDEO_SUFFIXES) and thumb is None:
                     thumb = take_ss(up_path)
                     if self.is_cancelled:
-                        os.remove(thumb)
+                        if self.thumb is None and thumb is not None and os.path.lexists(thumb):
+                            os.remove(thumb)
                         return
                 self.sent_msg = self.sent_msg.reply_document(document=up_path,
                                                              quote=True,
@@ -134,12 +135,14 @@ class TgUploader:
                                                              disable_notification=True,
                                                              progress=self.upload_progress)
         except FloodWait as f:
-            LOGGER.info(f)
+            LOGGER.info(str(f))
             time.sleep(f.x)
-        except Exception as e:
-            LOGGER.error(str(e))
+        except RPCError as e:
+            LOGGER.error(str(e) + str(up_path))
+        except Exception as err:
+            LOGGER.info(str(err))
             self.is_cancelled = True
-            self.__listener.onUploadError(str(e))
+            self.__listener.onUploadError(str(err))
         if self.thumb is None and thumb is not None and os.path.lexists(thumb):
             os.remove(thumb)
         if not self.is_cancelled:
@@ -149,9 +152,10 @@ class TgUploader:
         if self.is_cancelled:
             self.__app.stop_transmission()
             return
-        chunk_size = current - self.last_uploaded
-        self.last_uploaded = current
-        self.uploaded_bytes += chunk_size
+        with self.__resource_lock:
+            chunk_size = current - self.last_uploaded
+            self.last_uploaded = current
+            self.uploaded_bytes += chunk_size
 
     def user_settings(self):
         if self.user_id in AS_DOC_USERS:
@@ -169,5 +173,5 @@ class TgUploader:
 
     def cancel_download(self):
         self.is_cancelled = True
-        LOGGER.info(f"Cancelling Upload: {self.name}")
-        self.__listener.onUploadError('your upload has been stopped!')
+        LOGGER.info(f"𝐌𝐞𝐦𝐛𝐚𝐭𝐚𝐥𝐤𝐚𝐧 𝐔𝐧𝐠𝐠𝐚𝐡𝐚𝐧: {self.name}")
+        self.__listener.onUploadError('𝐔𝐧𝐠𝐠𝐚𝐡𝐚𝐧 𝐊𝐚𝐦𝐮 𝐭𝐞𝐥𝐚𝐡 𝐝𝐢𝐡𝐞𝐧𝐭𝐢𝐤𝐚𝐧!')
