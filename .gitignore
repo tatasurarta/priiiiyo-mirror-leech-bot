@@ -9,5 +9,10 @@ data*
 *.json
 *.pickle
 authorized_chats.txt
+sudo_users.txt
+.netrc
 log.txt
 accounts/*
+Thumbnails/*
+drive_folder
+cookies.txt
